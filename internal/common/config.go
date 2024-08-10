@@ -24,7 +24,7 @@ func ParseConfig() Config {
 	}
 	databaseConnString := flag.String("d", defaultDatabaseConnString, "Database connection string")
 
-	defaultAccrualSystemAddress := ""
+	defaultAccrualSystemAddress := "http://localhost:8081"
 	if envAccrualSystemAddress, exists := os.LookupEnv("ACCRUAL_SYSTEM_ADDRESS"); exists {
 		defaultAccrualSystemAddress = envAccrualSystemAddress
 	}

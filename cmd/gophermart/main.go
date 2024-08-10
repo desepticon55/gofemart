@@ -12,6 +12,7 @@ import (
 	"github.com/desepticon55/gofemart/internal/common"
 	blcSrv "github.com/desepticon55/gofemart/internal/service/balance"
 	ordSrv "github.com/desepticon55/gofemart/internal/service/order"
+	"github.com/desepticon55/gofemart/internal/service/orderworker"
 	usrSrv "github.com/desepticon55/gofemart/internal/service/user"
 	wdrvlSrv "github.com/desepticon55/gofemart/internal/service/withdrawal"
 	"github.com/desepticon55/gofemart/internal/storage"
@@ -27,11 +28,19 @@ import (
 	"time"
 )
 
+const (
+	workerCount = 4
+)
+
 func main() {
 	logger := initLogger()
 	defer logger.Sync()
 
 	config := parseConfig()
+	logger.Debug("Config created",
+		zap.String("Server address", config.ServerAddress),
+		zap.String("Database connection string", config.DatabaseConnString),
+		zap.String("Accrual system address", config.AccrualSystemAddress))
 
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
@@ -64,13 +73,25 @@ func main() {
 	router.Method(http.MethodPost, "/api/user/login", auth.LoginHandler(logger, userService))       //аутентификация пользователя
 
 	router.Group(func(r chi.Router) {
-		r.Use(customMiddleware.AuthMiddleware(logger))
+		r.Use(customMiddleware.CheckAuthMiddleware(logger))
 		r.Method(http.MethodPost, "/api/user/orders", order.UploadOrderHandler(logger, orderService))                      //загрузка пользователем номера заказа для расчёта
 		r.Method(http.MethodPost, "/api/user/balance/withdraw", balance.WithdrawBalanceHandler(logger, balanceService))    //запрос на списание баллов с накопительного счёта в счёт оплаты нового заказа
 		r.Method(http.MethodGet, "/api/user/orders", order.FindAllOrdersHandler(logger, orderService))                     //получение списка загруженных пользователем номеров заказов, статусов их обработки и информации о начислениях
 		r.Method(http.MethodGet, "/api/user/balance", balance.FindUserBalanceHandler(logger, balanceService))              //получение текущего баланса счёта баллов лояльности пользователя
 		r.Method(http.MethodGet, "/api/user/withdrawals", withdrawal.FindAllWithdrawalsHandler(logger, withdrawalService)) //получение информации о выводе средств с накопительного счёта пользователем
 	})
+
+	interval := common.Module / workerCount
+
+	for i := 0; i < workerCount; i++ {
+		from := i * interval
+		to := from + interval
+		worker := orderworker.NewWorker(logger, orderRepository, from, to)
+
+		go func(w *orderworker.Worker) {
+			w.ProcessOrders(context.Background(), config.AccrualSystemAddress)
+		}(worker)
+	}
 
 	http.ListenAndServe(config.ServerAddress, router)
 }

@@ -61,16 +61,18 @@ type Order struct {
 	LastModifyDate time.Time
 	Status         string
 	Username       string
-	Accrual        int64
+	Accrual        float64
+	KeyHash        int64
+	KeyHashModule  int64
 	Version        int64
 }
 
 func (e *Order) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
-		OrderNumber string `json:"number"`
-		CreateDate  string `json:"uploaded_at"`
-		Status      string `json:"status"`
-		Accrual     int64  `json:"accrual"`
+		OrderNumber string  `json:"number"`
+		CreateDate  string  `json:"uploaded_at"`
+		Status      string  `json:"status"`
+		Accrual     float64 `json:"accrual"`
 	}{
 		OrderNumber: e.OrderNumber,
 		CreateDate:  e.CreateDate.Format(time.RFC3339),

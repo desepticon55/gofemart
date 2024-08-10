@@ -2,9 +2,9 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"github.com/desepticon55/gofemart/internal/common"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/zap"
 	"time"
@@ -51,46 +51,31 @@ func (r *BalanceRepository) FindBalanceStats(ctx context.Context, userName strin
 }
 
 func (r *BalanceRepository) Withdraw(ctx context.Context, balance common.Balance, sum float64, orderNumber string) error {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		r.logger.Error("Error during open transaction", zap.Error(err))
-		return err
-	}
-
-	query := "update gofemart.balance set balance = $1, opt_lock = $2 where username = $3 and opt_lock = $4"
-	result, err := tx.Exec(ctx, query, balance.Balance-sum, balance.Version+1, balance.Username, balance.Version)
-	if err != nil {
-		r.logger.Error("Error during change balance", zap.String("userName", balance.Username), zap.Error(err))
-		return err
-	}
-
-	rowsAffected := result.RowsAffected()
-	if rowsAffected == 0 {
-		r.logger.Error("User balance has changed in other transaction", zap.String("userName", balance.Username), zap.Error(err))
-		return common.ErrUserBalanceHasChanged
-	}
-	withdrawID, err := uuid.NewRandom()
-	if err != nil {
-		r.logger.Error("Error during generate UUID", zap.Error(err))
-		return err
-	}
-
-	withdrawQuery := "insert into gofemart.withdrawal(id, order_number, username, sum, create_date) values ($1, $2, $3, $4, $5)"
-	_, err = tx.Exec(ctx, withdrawQuery, withdrawID, orderNumber, balance.Username, sum, time.Now())
-	if err != nil {
-		r.logger.Error("Error during create withdrawal", zap.String("orderNumber", orderNumber), zap.Error(err))
-		return err
-	}
-
-	err = tx.Commit(ctx)
-	if err != nil {
-		r.logger.Error("Error during commit transaction. Start rollback", zap.Error(err))
-		rollbackErr := tx.Rollback(ctx)
-		if rollbackErr != nil {
-			r.logger.Error("Error during rollback transaction", zap.Error(err))
+	return common.Transactional(ctx, r.pool, func(tx pgx.Tx) error {
+		query := "update gofemart.balance set balance = $1, opt_lock = $2 where username = $3 and opt_lock = $4"
+		result, err := tx.Exec(ctx, query, balance.Balance-sum, balance.Version+1, balance.Username, balance.Version)
+		if err != nil {
+			r.logger.Error("Error during change balance", zap.String("userName", balance.Username), zap.Error(err))
+			return err
 		}
-		return errors.Join(err, rollbackErr)
-	}
 
-	return nil
+		rowsAffected := result.RowsAffected()
+		if rowsAffected == 0 {
+			r.logger.Error("User balance has changed in other transaction", zap.String("userName", balance.Username), zap.Error(err))
+			return common.ErrUserBalanceHasChanged
+		}
+		withdrawID, err := uuid.NewRandom()
+		if err != nil {
+			r.logger.Error("Error during generate UUID", zap.Error(err))
+			return err
+		}
+
+		withdrawQuery := "insert into gofemart.withdrawal(id, order_number, username, sum, create_date) values ($1, $2, $3, $4, $5)"
+		_, err = tx.Exec(ctx, withdrawQuery, withdrawID, orderNumber, balance.Username, sum, time.Now())
+		if err != nil {
+			r.logger.Error("Error during create withdrawal", zap.String("orderNumber", orderNumber), zap.Error(err))
+			return err
+		}
+		return nil
+	})
 }

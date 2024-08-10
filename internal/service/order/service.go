@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/desepticon55/gofemart/internal/common"
 	"go.uber.org/zap"
+	"math"
 	"time"
 )
 
@@ -36,12 +37,15 @@ func (s *OrderService) UploadOrder(ctx context.Context, orderNumber string) erro
 
 	currentUserName := fmt.Sprintf("%v", ctx.Value(common.UserNameContextKey))
 	if !exist {
+		keyHash := int64(math.Abs(float64(common.HashCode(orderNumber))))
 		err := s.orderRepository.CreateOrder(ctx, common.Order{
 			OrderNumber:    orderNumber,
 			Username:       currentUserName,
 			CreateDate:     time.Now(),
 			LastModifyDate: time.Now(),
 			Status:         common.NewOrderStatus,
+			KeyHash:        keyHash,
+			KeyHashModule:  keyHash % int64(common.Module),
 		})
 		if err != nil {
 			s.logger.Error("Error during create order", zap.String("orderNumber", orderNumber), zap.Error(err))

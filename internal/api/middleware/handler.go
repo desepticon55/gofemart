@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func AuthMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
+func CheckAuthMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			const bearerPrefix = "Bearer "

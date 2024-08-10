@@ -1,7 +1,12 @@
 package common
 
 import (
+	"context"
+	"fmt"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"hash/fnv"
 	"strconv"
 	"time"
 )
@@ -10,6 +15,7 @@ type ContextKey string
 
 const (
 	UserNameContextKey ContextKey = "userName"
+	Module             int        = 256
 )
 
 var JwtKey = []byte("hard_coded_jwt_secret_key")
@@ -47,4 +53,30 @@ func IsValidOrderNumber(orderNumber string) bool {
 		needDouble = !needDouble
 	}
 	return sum%10 == 0
+}
+
+func HashCode(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
+}
+
+type TransactionFunc func(tx pgx.Tx) error
+
+func Transactional(ctx context.Context, pool *pgxpool.Pool, fn TransactionFunc) (err error) {
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("error during open transaction: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+		} else {
+			err = tx.Commit(ctx)
+		}
+	}()
+
+	err = fn(tx)
+	return err
 }
