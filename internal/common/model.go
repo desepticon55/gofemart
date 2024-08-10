@@ -23,6 +23,38 @@ type User struct {
 	Password string `json:"password"`
 }
 
+type Balance struct {
+	Username string
+	Balance  float64
+	Version  int64
+}
+
+type BalanceStats struct {
+	Username  string  `json:"-"`
+	Balance   float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
+}
+
+type Withdrawal struct {
+	ID          string
+	Username    string
+	OrderNumber string
+	Sum         float64
+	CreateDate  time.Time
+}
+
+func (e *Withdrawal) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		OrderNumber string  `json:"order"`
+		Sum         float64 `json:"sum"`
+		CreateDate  string  `json:"processed_at"`
+	}{
+		OrderNumber: e.OrderNumber,
+		CreateDate:  e.CreateDate.Format(time.RFC3339),
+		Sum:         e.Sum,
+	})
+}
+
 type Order struct {
 	OrderNumber    string
 	CreateDate     time.Time
@@ -30,6 +62,7 @@ type Order struct {
 	Status         string
 	Username       string
 	Accrual        int64
+	Version        int64
 }
 
 func (e *Order) MarshalJSON() ([]byte, error) {

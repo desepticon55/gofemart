@@ -5,11 +5,15 @@ import (
 	"flag"
 	"fmt"
 	"github.com/desepticon55/gofemart/internal/api/auth"
+	"github.com/desepticon55/gofemart/internal/api/balance"
 	customMiddleware "github.com/desepticon55/gofemart/internal/api/middleware"
 	"github.com/desepticon55/gofemart/internal/api/order"
+	"github.com/desepticon55/gofemart/internal/api/withdrawal"
 	"github.com/desepticon55/gofemart/internal/common"
+	blcSrv "github.com/desepticon55/gofemart/internal/service/balance"
 	ordSrv "github.com/desepticon55/gofemart/internal/service/order"
 	usrSrv "github.com/desepticon55/gofemart/internal/service/user"
+	wdrvlSrv "github.com/desepticon55/gofemart/internal/service/withdrawal"
 	"github.com/desepticon55/gofemart/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -50,17 +54,22 @@ func main() {
 	orderRepository := storage.NewOrderRepository(pool, logger)
 	orderService := ordSrv.NewOrderService(logger, orderRepository)
 
+	balanceRepository := storage.NewBalanceRepository(pool, logger)
+	balanceService := blcSrv.NewBalanceService(logger, balanceRepository)
+
+	withdrawalRepository := storage.NewWithdrawalRepository(pool, logger)
+	withdrawalService := wdrvlSrv.NewWithdrawalService(logger, withdrawalRepository)
+
 	router.Method(http.MethodPost, "/api/user/register", auth.RegisterHandler(logger, userService)) //регистрация пользователя
 	router.Method(http.MethodPost, "/api/user/login", auth.LoginHandler(logger, userService))       //аутентификация пользователя
 
 	router.Group(func(r chi.Router) {
 		r.Use(customMiddleware.AuthMiddleware(logger))
-		r.Method(http.MethodPost, "/api/user/orders", order.UploadOrderHandler(logger, orderService)) //загрузка пользователем номера заказа для расчёта
-		//r.Method(http.MethodPost, "/api/user/balance/withdraw", metricsApi.NewFindAllMetricsHandler(metricsService, logger)) //запрос на списание баллов с накопительного счёта в счёт оплаты нового заказа
-		r.Method(http.MethodGet, "/api/user/orders", order.FindAllOrdersHandler(logger, orderService)) //получение списка загруженных пользователем номеров заказов, статусов их обработки и информации о начислениях
-		//r.Method(http.MethodGet, "/api/user/balance", metricsApi.NewFindAllMetricsHandler(metricsService, logger))           //получение текущего баланса счёта баллов лояльности пользователя
-		//r.Method(http.MethodGet, "/api/user/balance/withdraw", metricsApi.NewFindAllMetricsHandler(metricsService, logger))  //запрос на списание баллов с накопительного счёта в счёт оплаты нового заказа
-		//r.Method(http.MethodGet, "/api/user/withdrawals", metricsApi.NewFindAllMetricsHandler(metricsService, logger))       //получение информации о выводе средств с накопительного счёта пользователем
+		r.Method(http.MethodPost, "/api/user/orders", order.UploadOrderHandler(logger, orderService))                      //загрузка пользователем номера заказа для расчёта
+		r.Method(http.MethodPost, "/api/user/balance/withdraw", balance.WithdrawBalanceHandler(logger, balanceService))    //запрос на списание баллов с накопительного счёта в счёт оплаты нового заказа
+		r.Method(http.MethodGet, "/api/user/orders", order.FindAllOrdersHandler(logger, orderService))                     //получение списка загруженных пользователем номеров заказов, статусов их обработки и информации о начислениях
+		r.Method(http.MethodGet, "/api/user/balance", balance.FindUserBalanceHandler(logger, balanceService))              //получение текущего баланса счёта баллов лояльности пользователя
+		r.Method(http.MethodGet, "/api/user/withdrawals", withdrawal.FindAllWithdrawalsHandler(logger, withdrawalService)) //получение информации о выводе средств с накопительного счёта пользователем
 	})
 
 	http.ListenAndServe(config.ServerAddress, router)

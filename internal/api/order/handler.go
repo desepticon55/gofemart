@@ -67,7 +67,7 @@ func FindAllOrdersHandler(logger *zap.Logger, service orderService) http.Handler
 		orders, err := service.FindAllOrders(request.Context())
 		if err != nil {
 			if errors.Is(err, common.ErrOrdersWasNotFound) {
-				http.Error(writer, "Order number is not filled", http.StatusNoContent)
+				http.Error(writer, "Orders was not found", http.StatusNoContent)
 				return
 			}
 			http.Error(writer, "Internal server error", http.StatusInternalServerError)

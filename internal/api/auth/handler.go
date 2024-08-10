@@ -21,10 +21,12 @@ func LoginHandler(logger *zap.Logger, service userService) http.HandlerFunc {
 		err := json.NewDecoder(request.Body).Decode(&user)
 		if err != nil {
 			http.Error(writer, "Invalid request payload", http.StatusBadRequest)
+			return
 		}
 
 		if user.Username == "" || user.Password == "" {
 			http.Error(writer, "Invalid request payload", http.StatusBadRequest)
+			return
 		}
 
 		foundUser, err := service.FindUser(request.Context(), user.Username)
@@ -63,6 +65,7 @@ func RegisterHandler(logger *zap.Logger, service userService) http.HandlerFunc {
 		err := json.NewDecoder(request.Body).Decode(&user)
 		if err != nil {
 			http.Error(writer, "Invalid request payload", http.StatusInternalServerError)
+			return
 		}
 
 		err = service.CreateUser(request.Context(), user)

@@ -45,6 +45,13 @@ func (r *UserRepository) CreateUser(ctx context.Context, userName string, passwo
 		return err
 	}
 
+	balanceQuery := "insert into gofemart.balance(username, balance, opt_lock) values ($1, $2, $3)"
+	_, err = tx.Exec(ctx, balanceQuery, userName, 0, 0)
+	if err != nil {
+		r.logger.Error("Error during create balance", zap.String("userName", userName), zap.Error(err))
+		return err
+	}
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		r.logger.Error("Error during commit transaction. Start rollback", zap.Error(err))

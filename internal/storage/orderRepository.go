@@ -20,7 +20,7 @@ func NewOrderRepository(pool *pgxpool.Pool, logger *zap.Logger) *OrderRepository
 	}
 }
 
-func (r OrderRepository) ExistOrder(ctx context.Context, orderNumber string) (bool, error) {
+func (r *OrderRepository) ExistOrder(ctx context.Context, orderNumber string) (bool, error) {
 	var exist bool
 	query := "select exists(select 1 from gofemart.order where order_number = $1)"
 	err := r.pool.QueryRow(ctx, query, orderNumber).Scan(&exist)
@@ -31,10 +31,10 @@ func (r OrderRepository) ExistOrder(ctx context.Context, orderNumber string) (bo
 	return exist, nil
 }
 
-func (r OrderRepository) FindOrder(ctx context.Context, orderNumber string) (common.Order, error) {
+func (r *OrderRepository) FindOrder(ctx context.Context, orderNumber string) (common.Order, error) {
 	var order common.Order
-	query := "select order_number, username, create_date, last_modify_date, status, accrual from gofemart.order where order_number = $1"
-	err := r.pool.QueryRow(ctx, query, orderNumber).Scan(&order.OrderNumber, &order.Username, &order.CreateDate, &order.LastModifyDate, &order.Status, &order.Accrual)
+	query := "select order_number, username, create_date, last_modify_date, status, accrual, opt_lock from gofemart.order where order_number = $1"
+	err := r.pool.QueryRow(ctx, query, orderNumber).Scan(&order.OrderNumber, &order.Username, &order.CreateDate, &order.LastModifyDate, &order.Status, &order.Accrual, &order.Version)
 	if err != nil {
 		return common.Order{}, err
 	}
@@ -42,15 +42,15 @@ func (r OrderRepository) FindOrder(ctx context.Context, orderNumber string) (com
 	return order, nil
 }
 
-func (r OrderRepository) CreateOrder(ctx context.Context, order common.Order) error {
+func (r *OrderRepository) CreateOrder(ctx context.Context, order common.Order) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		r.logger.Error("Error during open transaction", zap.Error(err))
 		return err
 	}
 
-	query := "insert into gofemart.order(order_number, username, create_date, last_modify_date, status, accrual) values ($1, $2, $3, $4, $5, $6)"
-	_, err = tx.Exec(ctx, query, order.OrderNumber, order.Username, order.CreateDate, order.LastModifyDate, order.Status, order.Accrual)
+	query := "insert into gofemart.order(order_number, username, create_date, last_modify_date, status, accrual, opt_lock) values ($1, $2, $3, $4, $5, $6, $7)"
+	_, err = tx.Exec(ctx, query, order.OrderNumber, order.Username, order.CreateDate, order.LastModifyDate, order.Status, order.Accrual, 0)
 	if err != nil {
 		r.logger.Error("Error during create order", zap.String("orderNumber", order.OrderNumber), zap.Error(err))
 		return err
@@ -69,8 +69,8 @@ func (r OrderRepository) CreateOrder(ctx context.Context, order common.Order) er
 	return nil
 }
 
-func (r OrderRepository) FindAllOrders(ctx context.Context, userName string) ([]common.Order, error) {
-	query := "select order_number, username, create_date, last_modify_date, status, accrual from gofemart.order where username = $1 order by create_date"
+func (r *OrderRepository) FindAllOrders(ctx context.Context, userName string) ([]common.Order, error) {
+	query := "select order_number, username, create_date, last_modify_date, status, accrual, opt_lock from gofemart.order where username = $1 order by create_date"
 	rows, err := r.pool.Query(ctx, query, userName)
 	if err != nil {
 		r.logger.Error("Error during execute query", zap.Error(err))
@@ -81,7 +81,7 @@ func (r OrderRepository) FindAllOrders(ctx context.Context, userName string) ([]
 	var orders []common.Order
 	for rows.Next() {
 		var order common.Order
-		if err := rows.Scan(&order.OrderNumber, &order.Username, &order.CreateDate, &order.LastModifyDate, &order.Status, &order.Accrual); err != nil {
+		if err := rows.Scan(&order.OrderNumber, &order.Username, &order.CreateDate, &order.LastModifyDate, &order.Status, &order.Accrual, &order.Version); err != nil {
 			r.logger.Error("Error during scan row", zap.Error(err))
 			continue
 		}
