@@ -1,0 +1,47 @@
+package common
+
+import (
+	"encoding/json"
+	"github.com/golang-jwt/jwt/v4"
+	"time"
+)
+
+const (
+	NewOrderStatus        = "NEW"
+	ProcessingOrderStatus = "PROCESSING"
+	InvalidOrderStatus    = "INVALID"
+	ProcessedOrderStatus  = "PROCESSED"
+)
+
+type Claims struct {
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
+
+type User struct {
+	Username string `json:"login"`
+	Password string `json:"password"`
+}
+
+type Order struct {
+	OrderNumber    string
+	CreateDate     time.Time
+	LastModifyDate time.Time
+	Status         string
+	Username       string
+	Accrual        int64
+}
+
+func (e *Order) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		OrderNumber string `json:"number"`
+		CreateDate  string `json:"uploaded_at"`
+		Status      string `json:"status"`
+		Accrual     int64  `json:"accrual"`
+	}{
+		OrderNumber: e.OrderNumber,
+		CreateDate:  e.CreateDate.Format(time.RFC3339),
+		Status:      e.Status,
+		Accrual:     e.Accrual,
+	})
+}
