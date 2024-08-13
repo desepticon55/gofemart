@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/desepticon55/gofemart/internal/common"
 	"github.com/gojek/heimdall/v7/httpclient"
-	"github.com/gojektech/heimdall"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"net/http"
@@ -23,13 +22,7 @@ type Worker struct {
 	orderRepository orderRepository
 }
 
-func NewWorker(logger *zap.Logger, repository orderRepository, from, to int) *Worker {
-	backoff := heimdall.NewExponentialBackoff(1*time.Second, 5*time.Second, 2, 0)
-	client := httpclient.NewClient(
-		httpclient.WithHTTPTimeout(1*time.Second),
-		httpclient.WithRetrier(heimdall.NewRetrier(backoff)),
-		httpclient.WithRetryCount(3),
-	)
+func NewWorker(logger *zap.Logger, repository orderRepository, client *httpclient.Client, from, to int) *Worker {
 	limiter := rate.NewLimiter(rate.Limit(10), 1)
 
 	logger.Debug("Make worker", zap.Int("from", from), zap.Int("to", to))

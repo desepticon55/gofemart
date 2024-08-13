@@ -18,6 +18,8 @@ import (
 	"github.com/desepticon55/gofemart/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/gojek/heimdall/v7/httpclient"
+	"github.com/gojektech/heimdall"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/jackc/pgx/v4/stdlib"
@@ -83,10 +85,17 @@ func main() {
 
 	interval := common.Module / workerCount
 
+	backoff := heimdall.NewExponentialBackoff(1*time.Second, 5*time.Second, 2, 0)
+	client := httpclient.NewClient(
+		httpclient.WithHTTPTimeout(1*time.Second),
+		httpclient.WithRetrier(heimdall.NewRetrier(backoff)),
+		httpclient.WithRetryCount(3),
+	)
+
 	for i := 0; i < workerCount; i++ {
 		from := i * interval
 		to := from + interval
-		worker := orderworker.NewWorker(logger, orderRepository, from, to)
+		worker := orderworker.NewWorker(logger, orderRepository, client, from, to)
 
 		go func(w *orderworker.Worker) {
 			w.ProcessOrders(context.Background(), config.AccrualSystemAddress)

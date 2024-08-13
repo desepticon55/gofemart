@@ -63,7 +63,7 @@ func (r *OrderRepository) FindAllOrders(ctx context.Context, userName string) ([
 	rows, err := r.pool.Query(ctx, query, userName)
 	if err != nil {
 		r.logger.Error("Error during execute query", zap.Error(err))
-		return nil, err
+		return []common.Order{}, err
 	}
 	defer rows.Close()
 
@@ -80,7 +80,7 @@ func (r *OrderRepository) FindAllOrders(ctx context.Context, userName string) ([
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return []common.Order{}, err
 	}
 
 	return orders, nil

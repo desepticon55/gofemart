@@ -21,11 +21,11 @@ func (s *WithdrawalService) FindAllWithdrawals(ctx context.Context) ([]common.Wi
 	withdrawals, err := s.withdrawalRepository.FindAllWithdrawals(ctx, currentUserName)
 	if err != nil {
 		s.logger.Error("Error during find withdrawals", zap.String("userName", currentUserName), zap.Error(err))
-		return nil, err
+		return []common.Withdrawal{}, err
 	}
 
 	if len(withdrawals) == 0 {
-		return nil, common.ErrWithdrawalsWasNotFound
+		return []common.Withdrawal{}, common.ErrWithdrawalsWasNotFound
 	}
 
 	return withdrawals, nil
