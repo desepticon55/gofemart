@@ -3,7 +3,8 @@ package balance
 import (
 	"context"
 	"errors"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
+	service2 "github.com/desepticon55/gofemart/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap/zaptest"
@@ -14,17 +15,17 @@ type MockBalanceRepository struct {
 	mock.Mock
 }
 
-func (m *MockBalanceRepository) FindBalanceStats(ctx context.Context, userName string) (common.BalanceStats, error) {
+func (m *MockBalanceRepository) FindBalanceStats(ctx context.Context, userName string) (model.BalanceStats, error) {
 	args := m.Called(ctx, userName)
-	return args.Get(0).(common.BalanceStats), args.Error(1)
+	return args.Get(0).(model.BalanceStats), args.Error(1)
 }
 
-func (m *MockBalanceRepository) FindBalance(ctx context.Context, userName string) (common.Balance, error) {
+func (m *MockBalanceRepository) FindBalance(ctx context.Context, userName string) (model.Balance, error) {
 	args := m.Called(ctx, userName)
-	return args.Get(0).(common.Balance), args.Error(1)
+	return args.Get(0).(model.Balance), args.Error(1)
 }
 
-func (m *MockBalanceRepository) Withdraw(ctx context.Context, balance common.Balance, sum float64, orderNumber string) error {
+func (m *MockBalanceRepository) Withdraw(ctx context.Context, balance model.Balance, sum float64, orderNumber string) error {
 	args := m.Called(ctx, balance, sum, orderNumber)
 	return args.Error(0)
 }
@@ -33,32 +34,32 @@ func TestBalanceService_FindBalanceStats(t *testing.T) {
 	t.Run("should return error if fetch balance return error", func(t *testing.T) {
 		logger := zaptest.NewLogger(t)
 		mockRepo := new(MockBalanceRepository)
-		ctx := context.WithValue(context.Background(), common.UserNameContextKey, "testUser")
+		ctx := context.WithValue(context.Background(), service2.UserNameContextKey, "testUser")
 
 		service := &BalanceService{
 			logger:            logger,
 			balanceRepository: mockRepo,
 		}
 
-		mockRepo.On("FindBalanceStats", ctx, "testUser").Return(common.BalanceStats{}, errors.New("db error"))
+		mockRepo.On("FindBalanceStats", ctx, "testUser").Return(model.BalanceStats{}, errors.New("db error"))
 
 		stats, err := service.FindBalanceStats(ctx)
 		assert.Error(t, err)
-		assert.Equal(t, common.BalanceStats{}, stats)
+		assert.Equal(t, model.BalanceStats{}, stats)
 		assert.Equal(t, "db error", err.Error())
 	})
 
 	t.Run("should return balance stats successfully", func(t *testing.T) {
 		logger := zaptest.NewLogger(t)
 		mockRepo := new(MockBalanceRepository)
-		ctx := context.WithValue(context.Background(), common.UserNameContextKey, "testUser")
+		ctx := context.WithValue(context.Background(), service2.UserNameContextKey, "testUser")
 
 		service := &BalanceService{
 			logger:            logger,
 			balanceRepository: mockRepo,
 		}
 
-		expectedStats := common.BalanceStats{Username: "testUser", Balance: 1000, Withdrawn: 500}
+		expectedStats := model.BalanceStats{Username: "testUser", Balance: 1000, Withdrawn: 500}
 		mockRepo.On("FindBalanceStats", ctx, "testUser").Return(expectedStats, nil)
 
 		stats, err := service.FindBalanceStats(ctx)
@@ -71,7 +72,7 @@ func TestBalanceService_Withdraw(t *testing.T) {
 	t.Run("should return error if order number is empty or sum is zero", func(t *testing.T) {
 		logger := zaptest.NewLogger(t)
 		mockRepo := new(MockBalanceRepository)
-		ctx := context.WithValue(context.Background(), common.UserNameContextKey, "testUser")
+		ctx := context.WithValue(context.Background(), service2.UserNameContextKey, "testUser")
 
 		service := &BalanceService{
 			logger:            logger,
@@ -80,13 +81,13 @@ func TestBalanceService_Withdraw(t *testing.T) {
 
 		err := service.Withdraw(ctx, "", 0)
 		assert.Error(t, err)
-		assert.Equal(t, common.ErrOrderNumberOrSumIsNotFilled, err)
+		assert.Equal(t, model.ErrOrderNumberOrSumIsNotFilled, err)
 	})
 
 	t.Run("should return error if order number is invalid", func(t *testing.T) {
 		logger := zaptest.NewLogger(t)
 		mockRepo := new(MockBalanceRepository)
-		ctx := context.WithValue(context.Background(), common.UserNameContextKey, "testUser")
+		ctx := context.WithValue(context.Background(), service2.UserNameContextKey, "testUser")
 
 		service := &BalanceService{
 			logger:            logger,
@@ -97,13 +98,13 @@ func TestBalanceService_Withdraw(t *testing.T) {
 
 		err := service.Withdraw(ctx, orderNumber, 100)
 		assert.Error(t, err)
-		assert.Equal(t, common.ErrOrderNumberIsNotValid, err)
+		assert.Equal(t, model.ErrOrderNumberIsNotValid, err)
 	})
 
 	t.Run("should return error if fetch balance return error", func(t *testing.T) {
 		logger := zaptest.NewLogger(t)
 		mockRepo := new(MockBalanceRepository)
-		ctx := context.WithValue(context.Background(), common.UserNameContextKey, "testUser")
+		ctx := context.WithValue(context.Background(), service2.UserNameContextKey, "testUser")
 
 		service := &BalanceService{
 			logger:            logger,
@@ -111,7 +112,7 @@ func TestBalanceService_Withdraw(t *testing.T) {
 		}
 
 		orderNumber := "12345678903"
-		mockRepo.On("FindBalance", ctx, "testUser").Return(common.Balance{}, errors.New("db error"))
+		mockRepo.On("FindBalance", ctx, "testUser").Return(model.Balance{}, errors.New("db error"))
 
 		err := service.Withdraw(ctx, orderNumber, 100)
 		assert.Error(t, err)
@@ -121,7 +122,7 @@ func TestBalanceService_Withdraw(t *testing.T) {
 	t.Run("should return error if balance is less than sum to withdraw", func(t *testing.T) {
 		logger := zaptest.NewLogger(t)
 		mockRepo := new(MockBalanceRepository)
-		ctx := context.WithValue(context.Background(), common.UserNameContextKey, "testUser")
+		ctx := context.WithValue(context.Background(), service2.UserNameContextKey, "testUser")
 
 		service := &BalanceService{
 			logger:            logger,
@@ -129,25 +130,25 @@ func TestBalanceService_Withdraw(t *testing.T) {
 		}
 
 		orderNumber := "12345678903"
-		mockRepo.On("FindBalance", ctx, "testUser").Return(common.Balance{Username: "testUser", Balance: 50}, nil)
+		mockRepo.On("FindBalance", ctx, "testUser").Return(model.Balance{Username: "testUser", Balance: 50}, nil)
 
 		err := service.Withdraw(ctx, orderNumber, 100)
 		assert.Error(t, err)
-		assert.Equal(t, common.ErrUserBalanceLessThanSumToWithdraw, err)
+		assert.Equal(t, model.ErrUserBalanceLessThanSumToWithdraw, err)
 	})
 
 	t.Run("should successfully withdraw", func(t *testing.T) {
 		logger := zaptest.NewLogger(t)
 		mockRepo := new(MockBalanceRepository)
-		ctx := context.WithValue(context.Background(), common.UserNameContextKey, "testUser")
+		ctx := context.WithValue(context.Background(), service2.UserNameContextKey, "testUser")
 
 		service := &BalanceService{
 			logger:            logger,
 			balanceRepository: mockRepo,
 		}
 
-		mockRepo.On("FindBalance", ctx, "testUser").Return(common.Balance{Username: "testUser", Balance: 200}, nil)
-		mockRepo.On("Withdraw", ctx, common.Balance{Username: "testUser", Balance: 200}, 100.0, "12345678903").Return(nil)
+		mockRepo.On("FindBalance", ctx, "testUser").Return(model.Balance{Username: "testUser", Balance: 200}, nil)
+		mockRepo.On("Withdraw", ctx, model.Balance{Username: "testUser", Balance: 200}, 100.0, "12345678903").Return(nil)
 
 		err := service.Withdraw(ctx, "12345678903", 100.0)
 		assert.NoError(t, err)

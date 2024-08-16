@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
+	"github.com/desepticon55/gofemart/internal/service"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 	"net/http"
@@ -14,11 +15,11 @@ import (
 )
 
 type mockBalanceService struct {
-	FindBalanceStatsFunc func(ctx context.Context) (common.BalanceStats, error)
+	FindBalanceStatsFunc func(ctx context.Context) (model.BalanceStats, error)
 	WithdrawFunc         func(ctx context.Context, orderNumber string, sum float64) error
 }
 
-func (m *mockBalanceService) FindBalanceStats(ctx context.Context) (common.BalanceStats, error) {
+func (m *mockBalanceService) FindBalanceStats(ctx context.Context) (model.BalanceStats, error) {
 	return m.FindBalanceStatsFunc(ctx)
 }
 
@@ -41,8 +42,8 @@ func TestFindUserBalanceHandler(t *testing.T) {
 			name:   "Successful balance retrieval",
 			method: http.MethodGet,
 			service: &mockBalanceService{
-				FindBalanceStatsFunc: func(ctx context.Context) (common.BalanceStats, error) {
-					return common.BalanceStats{
+				FindBalanceStatsFunc: func(ctx context.Context) (model.BalanceStats, error) {
+					return model.BalanceStats{
 						Username:  "testUser",
 						Balance:   1000.0,
 						Withdrawn: 200.0,
@@ -63,8 +64,8 @@ func TestFindUserBalanceHandler(t *testing.T) {
 			name:   "Internal server error",
 			method: http.MethodGet,
 			service: &mockBalanceService{
-				FindBalanceStatsFunc: func(ctx context.Context) (common.BalanceStats, error) {
-					return common.BalanceStats{}, errors.New("database error")
+				FindBalanceStatsFunc: func(ctx context.Context) (model.BalanceStats, error) {
+					return model.BalanceStats{}, errors.New("database error")
 				},
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -74,7 +75,7 @@ func TestFindUserBalanceHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.WithValue(context.Background(), common.UserNameContextKey, "testUser")
+			ctx := context.WithValue(context.Background(), service.UserNameContextKey, "testUser")
 			req := httptest.NewRequest(tt.method, "/balance", nil).WithContext(ctx)
 			rec := httptest.NewRecorder()
 
@@ -87,11 +88,11 @@ func TestFindUserBalanceHandler(t *testing.T) {
 			assert.Equal(t, tt.expectedStatus, res.StatusCode)
 
 			if tt.expectedBody != "" {
-				var body common.BalanceStats
+				var body model.BalanceStats
 				err := json.NewDecoder(res.Body).Decode(&body)
 				assert.NoError(t, err)
 
-				var expectedBody common.BalanceStats
+				var expectedBody model.BalanceStats
 				err = json.Unmarshal([]byte(tt.expectedBody), &expectedBody)
 				assert.NoError(t, err)
 
@@ -136,7 +137,7 @@ func TestWithdrawBalanceHandler(t *testing.T) {
 			body:   `{"order":"12345"}`,
 			service: &mockBalanceService{
 				WithdrawFunc: func(ctx context.Context, orderNumber string, sum float64) error {
-					return common.ErrOrderNumberOrSumIsNotFilled
+					return model.ErrOrderNumberOrSumIsNotFilled
 				},
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -147,7 +148,7 @@ func TestWithdrawBalanceHandler(t *testing.T) {
 			body:   `{"order":"invalid","sum":200}`,
 			service: &mockBalanceService{
 				WithdrawFunc: func(ctx context.Context, orderNumber string, sum float64) error {
-					return common.ErrOrderNumberIsNotValid
+					return model.ErrOrderNumberIsNotValid
 				},
 			},
 			expectedStatus: http.StatusUnprocessableEntity,
@@ -158,7 +159,7 @@ func TestWithdrawBalanceHandler(t *testing.T) {
 			body:   `{"order":"12345","sum":2000}`,
 			service: &mockBalanceService{
 				WithdrawFunc: func(ctx context.Context, orderNumber string, sum float64) error {
-					return common.ErrUserBalanceLessThanSumToWithdraw
+					return model.ErrUserBalanceLessThanSumToWithdraw
 				},
 			},
 			expectedStatus: http.StatusPaymentRequired,
@@ -169,7 +170,7 @@ func TestWithdrawBalanceHandler(t *testing.T) {
 			body:   `{"order":"12345","sum":200}`,
 			service: &mockBalanceService{
 				WithdrawFunc: func(ctx context.Context, orderNumber string, sum float64) error {
-					return common.ErrUserBalanceHasChanged
+					return model.ErrUserBalanceHasChanged
 				},
 			},
 			expectedStatus: http.StatusInternalServerError,

@@ -3,7 +3,7 @@ package order
 import (
 	"context"
 	"errors"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"io"
@@ -15,14 +15,14 @@ import (
 
 type mockOrderService struct {
 	UploadOrderFunc   func(ctx context.Context, order string) error
-	FindAllOrdersFunc func(ctx context.Context) ([]common.Order, error)
+	FindAllOrdersFunc func(ctx context.Context) ([]model.Order, error)
 }
 
 func (m *mockOrderService) UploadOrder(ctx context.Context, order string) error {
 	return m.UploadOrderFunc(ctx, order)
 }
 
-func (m *mockOrderService) FindAllOrders(ctx context.Context) ([]common.Order, error) {
+func (m *mockOrderService) FindAllOrders(ctx context.Context) ([]model.Order, error) {
 	return m.FindAllOrdersFunc(ctx)
 }
 
@@ -61,7 +61,7 @@ func TestUploadOrderHandler(t *testing.T) {
 			body:   `{}`,
 			service: &mockOrderService{
 				UploadOrderFunc: func(ctx context.Context, order string) error {
-					return common.ErrOrderNumberIsNotFilled
+					return model.ErrOrderNumberIsNotFilled
 				},
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -72,7 +72,7 @@ func TestUploadOrderHandler(t *testing.T) {
 			body:   "invalid",
 			service: &mockOrderService{
 				UploadOrderFunc: func(ctx context.Context, order string) error {
-					return common.ErrOrderNumberIsNotValid
+					return model.ErrOrderNumberIsNotValid
 				},
 			},
 			expectedStatus: http.StatusUnprocessableEntity,
@@ -83,7 +83,7 @@ func TestUploadOrderHandler(t *testing.T) {
 			body:   "12345",
 			service: &mockOrderService{
 				UploadOrderFunc: func(ctx context.Context, order string) error {
-					return common.ErrOrderNumberHasUploadedOtherUser
+					return model.ErrOrderNumberHasUploadedOtherUser
 				},
 			},
 			expectedStatus: http.StatusConflict,
@@ -94,7 +94,7 @@ func TestUploadOrderHandler(t *testing.T) {
 			body:   "12345",
 			service: &mockOrderService{
 				UploadOrderFunc: func(ctx context.Context, order string) error {
-					return common.ErrOrderNumberHasUploadedCurrentUser
+					return model.ErrOrderNumberHasUploadedCurrentUser
 				},
 			},
 			expectedStatus: http.StatusOK,
@@ -144,8 +144,8 @@ func TestFindAllOrdersHandler(t *testing.T) {
 			name:   "Successful return orders",
 			method: http.MethodGet,
 			service: &mockOrderService{
-				FindAllOrdersFunc: func(ctx context.Context) ([]common.Order, error) {
-					return []common.Order{
+				FindAllOrdersFunc: func(ctx context.Context) ([]model.Order, error) {
+					return []model.Order{
 						{OrderNumber: "12345"},
 					}, nil
 				},
@@ -163,8 +163,8 @@ func TestFindAllOrdersHandler(t *testing.T) {
 			name:   "Orders not found",
 			method: http.MethodGet,
 			service: &mockOrderService{
-				FindAllOrdersFunc: func(ctx context.Context) ([]common.Order, error) {
-					return nil, common.ErrOrdersWasNotFound
+				FindAllOrdersFunc: func(ctx context.Context) ([]model.Order, error) {
+					return nil, model.ErrOrdersWasNotFound
 				},
 			},
 			expectedStatus: http.StatusNoContent,
@@ -174,7 +174,7 @@ func TestFindAllOrdersHandler(t *testing.T) {
 			name:   "Internal server error",
 			method: http.MethodGet,
 			service: &mockOrderService{
-				FindAllOrdersFunc: func(ctx context.Context) ([]common.Order, error) {
+				FindAllOrdersFunc: func(ctx context.Context) ([]model.Order, error) {
 					return nil, errors.New("general error")
 				},
 			},

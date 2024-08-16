@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 	"github.com/desepticon55/gofemart/internal"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 	"testing"
@@ -22,7 +22,7 @@ func TestBalanceRepository(t *testing.T) {
 
 	balanceRepository := NewBalanceRepository(pool, logger)
 
-	balance := common.Balance{
+	balance := model.Balance{
 		Username: "testuser",
 		Balance:  1000.0,
 		Version:  1,

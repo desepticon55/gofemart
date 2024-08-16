@@ -2,7 +2,7 @@ package storage
 
 import (
 	"context"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/zap"
@@ -32,7 +32,7 @@ func (r *UserRepository) ExistUser(ctx context.Context, userName string) (bool, 
 }
 
 func (r *UserRepository) CreateUser(ctx context.Context, userName string, password string) error {
-	return common.Transactional(ctx, r.pool, func(tx pgx.Tx) error {
+	return transactional(ctx, r.logger, r.pool, func(tx pgx.Tx) error {
 		query := "insert into gofemart.user(username, password) values ($1, $2)"
 		_, err := tx.Exec(ctx, query, userName, password)
 		if err != nil {
@@ -50,12 +50,12 @@ func (r *UserRepository) CreateUser(ctx context.Context, userName string, passwo
 	})
 }
 
-func (r *UserRepository) FindUser(ctx context.Context, userName string) (common.User, error) {
-	var user common.User
+func (r *UserRepository) FindUser(ctx context.Context, userName string) (model.User, error) {
+	var user model.User
 	query := "select username, password from gofemart.user where username = $1"
 	err := r.pool.QueryRow(ctx, query, userName).Scan(&user.Username, &user.Password)
 	if err != nil {
-		return common.User{}, err
+		return model.User{}, err
 	}
 
 	return user, nil

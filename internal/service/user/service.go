@@ -2,7 +2,7 @@ package user
 
 import (
 	"context"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,9 +16,9 @@ func NewUserService(l *zap.Logger, r userRepository) *UserService {
 	return &UserService{logger: l, repository: r}
 }
 
-func (s *UserService) CreateUser(ctx context.Context, user common.User) error {
+func (s *UserService) CreateUser(ctx context.Context, user model.User) error {
 	if user.Username == "" || user.Password == "" {
-		return common.ErrUserDataIsNotValid
+		return model.ErrUserDataIsNotValid
 	}
 
 	exist, err := s.repository.ExistUser(ctx, user.Username)
@@ -28,7 +28,7 @@ func (s *UserService) CreateUser(ctx context.Context, user common.User) error {
 	}
 
 	if exist {
-		return common.ErrUserAlreadyExists
+		return model.ErrUserAlreadyExists
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
@@ -46,11 +46,15 @@ func (s *UserService) CreateUser(ctx context.Context, user common.User) error {
 	return nil
 }
 
-func (s *UserService) FindUser(ctx context.Context, userName string) (common.User, error) {
-	user, err := s.repository.FindUser(ctx, userName)
+func (s *UserService) FindUser(ctx context.Context, user model.User) (model.User, error) {
+	if user.Username == "" || user.Password == "" {
+		return model.User{}, model.ErrUserDataIsNotValid
+	}
+
+	user, err := s.repository.FindUser(ctx, user.Username)
 	if err != nil {
-		s.logger.Error("Error during find user", zap.String("userName", userName), zap.Error(err))
-		return common.User{}, err
+		s.logger.Error("Error during find user", zap.String("userName", user.Username), zap.Error(err))
+		return model.User{}, err
 	}
 	return user, nil
 }

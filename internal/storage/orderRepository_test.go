@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 	"github.com/desepticon55/gofemart/internal"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 	"testing"
@@ -24,7 +24,7 @@ func TestOrderRepository(t *testing.T) {
 
 	orderRepository := NewOrderRepository(pool, logger)
 
-	order := common.Order{
+	order := model.Order{
 		OrderNumber:    "12345678903",
 		CreateDate:     time.Now(),
 		LastModifyDate: time.Now(),

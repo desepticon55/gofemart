@@ -4,12 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/desepticon55/gofemart/internal"
 	"github.com/desepticon55/gofemart/internal/api/auth"
 	"github.com/desepticon55/gofemart/internal/api/balance"
 	customMiddleware "github.com/desepticon55/gofemart/internal/api/middleware"
 	"github.com/desepticon55/gofemart/internal/api/order"
 	"github.com/desepticon55/gofemart/internal/api/withdrawal"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/service"
 	blcSrv "github.com/desepticon55/gofemart/internal/service/balance"
 	ordSrv "github.com/desepticon55/gofemart/internal/service/order"
 	"github.com/desepticon55/gofemart/internal/service/orderworker"
@@ -55,7 +56,7 @@ func main() {
 
 	pool, err := createConnectionPool(context.Background(), config.DatabaseConnString)
 	if err != nil {
-		panic(err)
+		logger.Fatal("Error during initialize DB connection", zap.Error(err))
 	}
 	runMigrations(config.DatabaseConnString, logger)
 
@@ -83,7 +84,7 @@ func main() {
 		r.Method(http.MethodGet, "/api/user/withdrawals", withdrawal.FindAllWithdrawalsHandler(logger, withdrawalService)) //получение информации о выводе средств с накопительного счёта пользователем
 	})
 
-	interval := common.Module / workerCount
+	interval := service.Module / workerCount
 
 	backoff := heimdall.NewExponentialBackoff(1*time.Second, 5*time.Second, 2, 0)
 	client := httpclient.NewClient(
@@ -97,9 +98,7 @@ func main() {
 		to := from + interval
 		worker := orderworker.NewWorker(logger, orderRepository, client, from, to)
 
-		go func(w *orderworker.Worker) {
-			w.ProcessOrders(context.Background(), config.AccrualSystemAddress)
-		}(worker)
+		go worker.ProcessOrders(context.Background(), config.AccrualSystemAddress)
 	}
 
 	http.ListenAndServe(config.ServerAddress, router)
@@ -134,8 +133,8 @@ func runMigrations(connectionString string, logger *zap.Logger) {
 	}
 }
 
-func parseConfig() common.Config {
-	config := common.ParseConfig()
+func parseConfig() internal.Config {
+	config := internal.ParseConfig()
 	flag.Parse()
 	return config
 }

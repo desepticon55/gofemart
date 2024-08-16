@@ -2,7 +2,7 @@ package storage
 
 import (
 	"context"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/zap"
 )
@@ -19,7 +19,7 @@ func NewWithdrawalRepository(pool *pgxpool.Pool, logger *zap.Logger) *OrderRepos
 	}
 }
 
-func (r *OrderRepository) FindAllWithdrawals(ctx context.Context, userName string) ([]common.Withdrawal, error) {
+func (r *OrderRepository) FindAllWithdrawals(ctx context.Context, userName string) ([]model.Withdrawal, error) {
 	query := "select id, order_number, username, sum, create_date from gofemart.withdrawal where username = $1 order by create_date"
 	rows, err := r.pool.Query(ctx, query, userName)
 	if err != nil {
@@ -28,9 +28,9 @@ func (r *OrderRepository) FindAllWithdrawals(ctx context.Context, userName strin
 	}
 	defer rows.Close()
 
-	var withdrawals []common.Withdrawal
+	var withdrawals []model.Withdrawal
 	for rows.Next() {
-		var withdrawal common.Withdrawal
+		var withdrawal model.Withdrawal
 		if err := rows.Scan(&withdrawal.ID, &withdrawal.OrderNumber, &withdrawal.Username, &withdrawal.Sum, &withdrawal.CreateDate); err != nil {
 			r.logger.Error("Error during scan row", zap.Error(err))
 			continue

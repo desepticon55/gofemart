@@ -3,7 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/crypto/bcrypt"
@@ -14,15 +14,15 @@ import (
 )
 
 type mockUserService struct {
-	FindUserFunc   func(ctx context.Context, username string) (common.User, error)
-	CreateUserFunc func(ctx context.Context, user common.User) error
+	FindUserFunc   func(ctx context.Context, user model.User) (model.User, error)
+	CreateUserFunc func(ctx context.Context, user model.User) error
 }
 
-func (m *mockUserService) FindUser(ctx context.Context, username string) (common.User, error) {
-	return m.FindUserFunc(ctx, username)
+func (m *mockUserService) FindUser(ctx context.Context, user model.User) (model.User, error) {
+	return m.FindUserFunc(ctx, user)
 }
 
-func (m *mockUserService) CreateUser(ctx context.Context, user common.User) error {
+func (m *mockUserService) CreateUser(ctx context.Context, user model.User) error {
 	return m.CreateUserFunc(ctx, user)
 }
 
@@ -31,7 +31,7 @@ func TestLoginHandler(t *testing.T) {
 	defer logger.Sync()
 
 	passwordHash, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
-	mockUser := common.User{Username: "testUser", Password: string(passwordHash)}
+	mockUser := model.User{Username: "testUser", Password: string(passwordHash)}
 
 	tests := []struct {
 		name           string
@@ -45,7 +45,7 @@ func TestLoginHandler(t *testing.T) {
 			method: http.MethodPost,
 			body:   `{"login":"testUser", "password":"password"}`,
 			service: &mockUserService{
-				FindUserFunc: func(ctx context.Context, username string) (common.User, error) {
+				FindUserFunc: func(ctx context.Context, user model.User) (model.User, error) {
 					return mockUser, nil
 				},
 			},
@@ -63,8 +63,8 @@ func TestLoginHandler(t *testing.T) {
 			method: http.MethodPost,
 			body:   `{"login":"", "password":""}`,
 			service: &mockUserService{
-				FindUserFunc: func(ctx context.Context, username string) (common.User, error) {
-					return common.User{}, nil
+				FindUserFunc: func(ctx context.Context, user model.User) (model.User, error) {
+					return model.User{}, model.ErrUserDataIsNotValid
 				},
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -74,8 +74,8 @@ func TestLoginHandler(t *testing.T) {
 			method: http.MethodPost,
 			body:   `{"login":"nonexistent", "password":"password"}`,
 			service: &mockUserService{
-				FindUserFunc: func(ctx context.Context, username string) (common.User, error) {
-					return common.User{}, errors.New("user not found")
+				FindUserFunc: func(ctx context.Context, user model.User) (model.User, error) {
+					return model.User{}, errors.New("user not found")
 				},
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -85,7 +85,7 @@ func TestLoginHandler(t *testing.T) {
 			method: http.MethodPost,
 			body:   `{"login":"testUser", "password":"wrongpassword"}`,
 			service: &mockUserService{
-				FindUserFunc: func(ctx context.Context, username string) (common.User, error) {
+				FindUserFunc: func(ctx context.Context, user model.User) (model.User, error) {
 					return mockUser, nil
 				},
 			},
@@ -131,7 +131,7 @@ func TestRegisterHandler(t *testing.T) {
 			method: http.MethodPost,
 			body:   `{"login":"testUser", "password":"password"}`,
 			service: &mockUserService{
-				CreateUserFunc: func(ctx context.Context, user common.User) error {
+				CreateUserFunc: func(ctx context.Context, user model.User) error {
 					return nil
 				},
 			},
@@ -149,8 +149,8 @@ func TestRegisterHandler(t *testing.T) {
 			method: http.MethodPost,
 			body:   `{"login":"", "password":""}`,
 			service: &mockUserService{
-				CreateUserFunc: func(ctx context.Context, user common.User) error {
-					return common.ErrUserDataIsNotValid
+				CreateUserFunc: func(ctx context.Context, user model.User) error {
+					return model.ErrUserDataIsNotValid
 				},
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -160,8 +160,8 @@ func TestRegisterHandler(t *testing.T) {
 			method: http.MethodPost,
 			body:   `{"login":"existingUser", "password":"password"}`,
 			service: &mockUserService{
-				CreateUserFunc: func(ctx context.Context, user common.User) error {
-					return common.ErrUserAlreadyExists
+				CreateUserFunc: func(ctx context.Context, user model.User) error {
+					return model.ErrUserAlreadyExists
 				},
 			},
 			expectedStatus: http.StatusConflict,

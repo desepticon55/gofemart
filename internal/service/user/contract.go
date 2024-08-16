@@ -2,7 +2,7 @@ package user
 
 import (
 	"context"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 )
 
 type userRepository interface {
@@ -10,5 +10,5 @@ type userRepository interface {
 
 	CreateUser(ctx context.Context, userName string, password string) error
 
-	FindUser(ctx context.Context, userName string) (common.User, error)
+	FindUser(ctx context.Context, userName string) (model.User, error)
 }

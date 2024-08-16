@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"go.uber.org/zap"
 	"net/http"
 )
@@ -60,22 +60,22 @@ func WithdrawBalanceHandler(logger *zap.Logger, service balanceService) http.Han
 
 		err = service.Withdraw(request.Context(), req.OrderNumber, req.Sum)
 		if err != nil {
-			if errors.Is(err, common.ErrOrderNumberOrSumIsNotFilled) {
+			if errors.Is(err, model.ErrOrderNumberOrSumIsNotFilled) {
 				http.Error(writer, "Order number or sum is not filled", http.StatusBadRequest)
 				return
 			}
 
-			if errors.Is(err, common.ErrOrderNumberIsNotValid) {
+			if errors.Is(err, model.ErrOrderNumberIsNotValid) {
 				http.Error(writer, "Order number is not valid", http.StatusUnprocessableEntity)
 				return
 			}
 
-			if errors.Is(err, common.ErrUserBalanceLessThanSumToWithdraw) {
+			if errors.Is(err, model.ErrUserBalanceLessThanSumToWithdraw) {
 				http.Error(writer, "Balance less than sum to withdrawal", http.StatusPaymentRequired)
 				return
 			}
 
-			if errors.Is(err, common.ErrUserBalanceHasChanged) {
+			if errors.Is(err, model.ErrUserBalanceHasChanged) {
 				http.Error(writer, "Internal server error", http.StatusInternalServerError)
 				return
 			}

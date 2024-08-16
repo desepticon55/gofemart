@@ -3,7 +3,9 @@ package middleware
 import (
 	"compress/gzip"
 	"context"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/api/auth"
+	"github.com/desepticon55/gofemart/internal/model"
+	"github.com/desepticon55/gofemart/internal/service"
 	"github.com/golang-jwt/jwt/v4"
 	"go.uber.org/zap"
 	"io"
@@ -29,9 +31,9 @@ func CheckAuthMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 			}
 
 			tokenStr := authHeader[len(bearerPrefix):]
-			claims := &common.Claims{}
+			claims := &model.Claims{}
 			token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-				return common.JwtKey, nil
+				return auth.JwtKey, nil
 			})
 
 			if err != nil {
@@ -46,7 +48,7 @@ func CheckAuthMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := context.WithValue(request.Context(), common.UserNameContextKey, claims.Username)
+			ctx := context.WithValue(request.Context(), service.UserNameContextKey, claims.Username)
 			next.ServeHTTP(writer, request.WithContext(ctx))
 		})
 	}

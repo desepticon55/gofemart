@@ -3,7 +3,8 @@ package withdrawal
 import (
 	"context"
 	"errors"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
+	"github.com/desepticon55/gofemart/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -15,13 +16,13 @@ type MockWithdrawalRepository struct {
 	mock.Mock
 }
 
-func (m *MockWithdrawalRepository) FindAllWithdrawals(ctx context.Context, userName string) ([]common.Withdrawal, error) {
+func (m *MockWithdrawalRepository) FindAllWithdrawals(ctx context.Context, userName string) ([]model.Withdrawal, error) {
 	args := m.Called(ctx, userName)
-	return args.Get(0).([]common.Withdrawal), args.Error(1)
+	return args.Get(0).([]model.Withdrawal), args.Error(1)
 }
 
 func TestWithdrawalService_TestFindAllWithdrawals(t *testing.T) {
-	ctx := context.WithValue(context.Background(), common.UserNameContextKey, "testUser")
+	ctx := context.WithValue(context.Background(), service.UserNameContextKey, "testUser")
 	logger := zaptest.NewLogger(t)
 
 	t.Run("should return found withdrawals", func(t *testing.T) {
@@ -31,7 +32,7 @@ func TestWithdrawalService_TestFindAllWithdrawals(t *testing.T) {
 			logger:               logger,
 		}
 
-		expectedWithdrawals := []common.Withdrawal{
+		expectedWithdrawals := []model.Withdrawal{
 			{ID: "1", Username: "testUser", OrderNumber: "123456", Sum: 100.0},
 			{ID: "2", Username: "testUser", OrderNumber: "123456", Sum: 200.0},
 		}
@@ -53,7 +54,7 @@ func TestWithdrawalService_TestFindAllWithdrawals(t *testing.T) {
 		}
 
 		expectedError := errors.New("database error")
-		mockRepo.On("FindAllWithdrawals", ctx, "testUser").Return([]common.Withdrawal{}, expectedError)
+		mockRepo.On("FindAllWithdrawals", ctx, "testUser").Return([]model.Withdrawal{}, expectedError)
 
 		withdrawals, err := service.FindAllWithdrawals(ctx)
 		assert.Error(t, err)
@@ -71,12 +72,12 @@ func TestWithdrawalService_TestFindAllWithdrawals(t *testing.T) {
 			logger:               logger,
 		}
 
-		mockRepo.On("FindAllWithdrawals", ctx, "testUser").Return([]common.Withdrawal{}, nil)
+		mockRepo.On("FindAllWithdrawals", ctx, "testUser").Return([]model.Withdrawal{}, nil)
 
 		withdrawals, err := service.FindAllWithdrawals(ctx)
 		assert.Error(t, err)
 		assert.Empty(t, withdrawals)
-		assert.Equal(t, common.ErrWithdrawalsWasNotFound, err)
+		assert.Equal(t, model.ErrWithdrawalsWasNotFound, err)
 
 		mockRepo.AssertCalled(t, "FindAllWithdrawals", ctx, "testUser")
 		mockRepo.AssertExpectations(t)

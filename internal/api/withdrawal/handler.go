@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"go.uber.org/zap"
 	"net/http"
 )
@@ -18,7 +18,7 @@ func FindAllWithdrawalsHandler(logger *zap.Logger, service withdrawalService) ht
 
 		withdrawals, err := service.FindAllWithdrawals(request.Context())
 		if err != nil {
-			if errors.Is(err, common.ErrWithdrawalsWasNotFound) {
+			if errors.Is(err, model.ErrWithdrawalsWasNotFound) {
 				http.Error(writer, "Order number is not filled", http.StatusNoContent)
 				return
 			}

@@ -2,7 +2,7 @@ package storage
 
 import (
 	"context"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -22,18 +22,18 @@ func NewBalanceRepository(pool *pgxpool.Pool, logger *zap.Logger) *BalanceReposi
 	}
 }
 
-func (r *BalanceRepository) FindBalance(ctx context.Context, userName string) (common.Balance, error) {
+func (r *BalanceRepository) FindBalance(ctx context.Context, userName string) (model.Balance, error) {
 	query := "select username, balance, opt_lock from gofemart.balance where username = $1"
-	var balance common.Balance
+	var balance model.Balance
 	err := r.pool.QueryRow(ctx, query, userName).Scan(&balance.Username, &balance.Balance, &balance.Version)
 	if err != nil {
-		return common.Balance{}, err
+		return model.Balance{}, err
 	}
 
 	return balance, nil
 }
 
-func (r *BalanceRepository) FindBalanceStats(ctx context.Context, userName string) (common.BalanceStats, error) {
+func (r *BalanceRepository) FindBalanceStats(ctx context.Context, userName string) (model.BalanceStats, error) {
 	query := `
 		select b.username, b.balance, coalesce(sum(w.sum), 0) 
 		from gofemart.balance b
@@ -41,17 +41,17 @@ func (r *BalanceRepository) FindBalanceStats(ctx context.Context, userName strin
 		where b.username = $1
 		group by b.username, b.balance
     `
-	var balance common.BalanceStats
+	var balance model.BalanceStats
 	err := r.pool.QueryRow(ctx, query, userName).Scan(&balance.Username, &balance.Balance, &balance.Withdrawn)
 	if err != nil {
-		return common.BalanceStats{}, err
+		return model.BalanceStats{}, err
 	}
 
 	return balance, nil
 }
 
-func (r *BalanceRepository) Withdraw(ctx context.Context, balance common.Balance, sum float64, orderNumber string) error {
-	return common.Transactional(ctx, r.pool, func(tx pgx.Tx) error {
+func (r *BalanceRepository) Withdraw(ctx context.Context, balance model.Balance, sum float64, orderNumber string) error {
+	return transactional(ctx, r.logger, r.pool, func(tx pgx.Tx) error {
 		query := "update gofemart.balance set balance = $1, opt_lock = $2 where username = $3 and opt_lock = $4"
 		result, err := tx.Exec(ctx, query, balance.Balance-sum, balance.Version+1, balance.Username, balance.Version)
 		if err != nil {
@@ -62,7 +62,7 @@ func (r *BalanceRepository) Withdraw(ctx context.Context, balance common.Balance
 		rowsAffected := result.RowsAffected()
 		if rowsAffected == 0 {
 			r.logger.Error("User balance has changed in other transaction", zap.String("userName", balance.Username), zap.Error(err))
-			return common.ErrUserBalanceHasChanged
+			return model.ErrUserBalanceHasChanged
 		}
 		withdrawID, err := uuid.NewRandom()
 		if err != nil {

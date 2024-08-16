@@ -2,11 +2,11 @@ package auth
 
 import (
 	"context"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 )
 
 type userService interface {
-	CreateUser(ctx context.Context, user common.User) error
+	CreateUser(ctx context.Context, user model.User) error
 
-	FindUser(ctx context.Context, userName string) (common.User, error)
+	FindUser(ctx context.Context, user model.User) (model.User, error)
 }

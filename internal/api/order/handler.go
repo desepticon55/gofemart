@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
@@ -29,22 +29,22 @@ func UploadOrderHandler(logger *zap.Logger, service orderService) http.HandlerFu
 
 		err = service.UploadOrder(request.Context(), string(body))
 		if err != nil {
-			if errors.Is(err, common.ErrOrderNumberIsNotFilled) {
+			if errors.Is(err, model.ErrOrderNumberIsNotFilled) {
 				http.Error(writer, "Order number is not filled", http.StatusBadRequest)
 				return
 			}
 
-			if errors.Is(err, common.ErrOrderNumberIsNotValid) {
+			if errors.Is(err, model.ErrOrderNumberIsNotValid) {
 				http.Error(writer, "Order number is not valid", http.StatusUnprocessableEntity)
 				return
 			}
 
-			if errors.Is(err, common.ErrOrderNumberHasUploadedOtherUser) {
+			if errors.Is(err, model.ErrOrderNumberHasUploadedOtherUser) {
 				http.Error(writer, "Order number has uploaded from other user", http.StatusConflict)
 				return
 			}
 
-			if errors.Is(err, common.ErrOrderNumberHasUploadedCurrentUser) {
+			if errors.Is(err, model.ErrOrderNumberHasUploadedCurrentUser) {
 				writer.WriteHeader(http.StatusOK)
 				return
 			}
@@ -66,7 +66,7 @@ func FindAllOrdersHandler(logger *zap.Logger, service orderService) http.Handler
 
 		orders, err := service.FindAllOrders(request.Context())
 		if err != nil {
-			if errors.Is(err, common.ErrOrdersWasNotFound) {
+			if errors.Is(err, model.ErrOrdersWasNotFound) {
 				http.Error(writer, "Orders was not found", http.StatusNoContent)
 				return
 			}

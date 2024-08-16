@@ -3,7 +3,8 @@ package order
 import (
 	"context"
 	"fmt"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
+	"github.com/desepticon55/gofemart/internal/service"
 	"go.uber.org/zap"
 	"math"
 	"time"
@@ -21,12 +22,12 @@ func NewOrderService(l *zap.Logger, r orderRepository) *OrderService {
 func (s *OrderService) UploadOrder(ctx context.Context, orderNumber string) error {
 	if orderNumber == "" {
 		s.logger.Error("Order number is not filled")
-		return common.ErrOrderNumberIsNotFilled
+		return model.ErrOrderNumberIsNotFilled
 	}
 
-	if !common.IsValidOrderNumber(orderNumber) {
+	if !service.IsValidOrderNumber(orderNumber) {
 		s.logger.Error("Order number is not valid", zap.String("orderNumber", orderNumber))
-		return common.ErrOrderNumberIsNotValid
+		return model.ErrOrderNumberIsNotValid
 	}
 
 	exist, err := s.orderRepository.ExistOrder(ctx, orderNumber)
@@ -35,17 +36,17 @@ func (s *OrderService) UploadOrder(ctx context.Context, orderNumber string) erro
 		return err
 	}
 
-	currentUserName := fmt.Sprintf("%v", ctx.Value(common.UserNameContextKey))
+	currentUserName := fmt.Sprintf("%v", ctx.Value(service.UserNameContextKey))
 	if !exist {
-		keyHash := int64(math.Abs(float64(common.HashCode(orderNumber))))
-		err := s.orderRepository.CreateOrder(ctx, common.Order{
+		keyHash := int64(math.Abs(float64(service.HashCode(orderNumber))))
+		err := s.orderRepository.CreateOrder(ctx, model.Order{
 			OrderNumber:    orderNumber,
 			Username:       currentUserName,
 			CreateDate:     time.Now(),
 			LastModifyDate: time.Now(),
-			Status:         common.NewOrderStatus,
+			Status:         model.NewOrderStatus,
 			KeyHash:        keyHash,
-			KeyHashModule:  keyHash % int64(common.Module),
+			KeyHashModule:  keyHash % int64(service.Module),
 		})
 		if err != nil {
 			s.logger.Error("Error during create order", zap.String("orderNumber", orderNumber), zap.Error(err))
@@ -58,17 +59,17 @@ func (s *OrderService) UploadOrder(ctx context.Context, orderNumber string) erro
 			return err
 		}
 		if currentUserName == order.Username {
-			return common.ErrOrderNumberHasUploadedCurrentUser
+			return model.ErrOrderNumberHasUploadedCurrentUser
 		} else {
-			return common.ErrOrderNumberHasUploadedOtherUser
+			return model.ErrOrderNumberHasUploadedOtherUser
 		}
 	}
 
 	return nil
 }
 
-func (s *OrderService) FindAllOrders(ctx context.Context) ([]common.Order, error) {
-	currentUserName := fmt.Sprintf("%v", ctx.Value(common.UserNameContextKey))
+func (s *OrderService) FindAllOrders(ctx context.Context) ([]model.Order, error) {
+	currentUserName := fmt.Sprintf("%v", ctx.Value(service.UserNameContextKey))
 	orders, err := s.orderRepository.FindAllOrders(ctx, currentUserName)
 	if err != nil {
 		s.logger.Error("Error during find orders", zap.String("userName", currentUserName), zap.Error(err))
@@ -76,7 +77,7 @@ func (s *OrderService) FindAllOrders(ctx context.Context) ([]common.Order, error
 	}
 
 	if len(orders) == 0 {
-		return nil, common.ErrOrdersWasNotFound
+		return nil, model.ErrOrdersWasNotFound
 	}
 
 	return orders, nil

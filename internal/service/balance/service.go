@@ -3,7 +3,8 @@ package balance
 import (
 	"context"
 	"fmt"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
+	"github.com/desepticon55/gofemart/internal/service"
 	"go.uber.org/zap"
 )
 
@@ -16,24 +17,24 @@ func NewBalanceService(l *zap.Logger, r balanceRepository) *BalanceService {
 	return &BalanceService{logger: l, balanceRepository: r}
 }
 
-func (s *BalanceService) FindBalanceStats(ctx context.Context) (common.BalanceStats, error) {
-	currentUserName := fmt.Sprintf("%v", ctx.Value(common.UserNameContextKey))
+func (s *BalanceService) FindBalanceStats(ctx context.Context) (model.BalanceStats, error) {
+	currentUserName := fmt.Sprintf("%v", ctx.Value(service.UserNameContextKey))
 	balance, err := s.balanceRepository.FindBalanceStats(ctx, currentUserName)
 	if err != nil {
 		s.logger.Error("Error during fetch balance", zap.String("userName", currentUserName), zap.Error(err))
-		return common.BalanceStats{}, err
+		return model.BalanceStats{}, err
 	}
 	return balance, nil
 }
 
 func (s *BalanceService) Withdraw(ctx context.Context, orderNumber string, sum float64) error {
 	if orderNumber == "" || sum == 0 {
-		return common.ErrOrderNumberOrSumIsNotFilled
+		return model.ErrOrderNumberOrSumIsNotFilled
 	}
 
-	currentUserName := fmt.Sprintf("%v", ctx.Value(common.UserNameContextKey))
-	if !common.IsValidOrderNumber(orderNumber) {
-		return common.ErrOrderNumberIsNotValid
+	currentUserName := fmt.Sprintf("%v", ctx.Value(service.UserNameContextKey))
+	if !service.IsValidOrderNumber(orderNumber) {
+		return model.ErrOrderNumberIsNotValid
 	}
 
 	balance, err := s.balanceRepository.FindBalance(ctx, currentUserName)
@@ -43,7 +44,7 @@ func (s *BalanceService) Withdraw(ctx context.Context, orderNumber string, sum f
 	}
 
 	if balance.Balance < sum {
-		return common.ErrUserBalanceLessThanSumToWithdraw
+		return model.ErrUserBalanceLessThanSumToWithdraw
 	}
 
 	err = s.balanceRepository.Withdraw(ctx, balance, sum, orderNumber)

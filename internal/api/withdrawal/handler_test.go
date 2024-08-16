@@ -3,7 +3,7 @@ package withdrawal
 import (
 	"context"
 	"errors"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"io"
@@ -13,10 +13,10 @@ import (
 )
 
 type mockWithdrawalService struct {
-	FindAllWithdrawalsFunc func(ctx context.Context) ([]common.Withdrawal, error)
+	FindAllWithdrawalsFunc func(ctx context.Context) ([]model.Withdrawal, error)
 }
 
-func (m *mockWithdrawalService) FindAllWithdrawals(ctx context.Context) ([]common.Withdrawal, error) {
+func (m *mockWithdrawalService) FindAllWithdrawals(ctx context.Context) ([]model.Withdrawal, error) {
 	return m.FindAllWithdrawalsFunc(ctx)
 }
 
@@ -35,8 +35,8 @@ func TestFindAllWithdrawalsHandler(t *testing.T) {
 			name:   "Successful return withdrawals",
 			method: http.MethodGet,
 			service: &mockWithdrawalService{
-				FindAllWithdrawalsFunc: func(ctx context.Context) ([]common.Withdrawal, error) {
-					return []common.Withdrawal{
+				FindAllWithdrawalsFunc: func(ctx context.Context) ([]model.Withdrawal, error) {
+					return []model.Withdrawal{
 						{ID: "1", Sum: 100.0, Username: "testUser", OrderNumber: "12345"},
 						{ID: "2", Sum: 50.0, Username: "testUser", OrderNumber: "67432"},
 					}, nil
@@ -55,8 +55,8 @@ func TestFindAllWithdrawalsHandler(t *testing.T) {
 			name:   "Withdrawals not found",
 			method: http.MethodGet,
 			service: &mockWithdrawalService{
-				FindAllWithdrawalsFunc: func(ctx context.Context) ([]common.Withdrawal, error) {
-					return nil, common.ErrWithdrawalsWasNotFound
+				FindAllWithdrawalsFunc: func(ctx context.Context) ([]model.Withdrawal, error) {
+					return nil, model.ErrWithdrawalsWasNotFound
 				},
 			},
 			expectedStatus: http.StatusNoContent,
@@ -66,7 +66,7 @@ func TestFindAllWithdrawalsHandler(t *testing.T) {
 			name:   "Internal server error",
 			method: http.MethodGet,
 			service: &mockWithdrawalService{
-				FindAllWithdrawalsFunc: func(ctx context.Context) ([]common.Withdrawal, error) {
+				FindAllWithdrawalsFunc: func(ctx context.Context) ([]model.Withdrawal, error) {
 					return nil, errors.New("general error")
 				},
 			},

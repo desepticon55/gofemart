@@ -2,7 +2,7 @@ package orderworker
 
 import (
 	"context"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"github.com/gojek/heimdall/v7/httpclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -18,12 +18,12 @@ type MockOrderRepository struct {
 	mock.Mock
 }
 
-func (m *MockOrderRepository) FindOrdersToProcess(ctx context.Context, from, to int) ([]common.Order, error) {
+func (m *MockOrderRepository) FindOrdersToProcess(ctx context.Context, from, to int) ([]model.Order, error) {
 	args := m.Called(ctx, from, to)
-	return args.Get(0).([]common.Order), args.Error(1)
+	return args.Get(0).([]model.Order), args.Error(1)
 }
 
-func (m *MockOrderRepository) ChangeOrderStatus(ctx context.Context, order common.Order, status string, accrual float64) error {
+func (m *MockOrderRepository) ChangeOrderStatus(ctx context.Context, order model.Order, status string, accrual float64) error {
 	args := m.Called(ctx, order, status, accrual)
 	return args.Error(0)
 }
@@ -54,9 +54,13 @@ func TestWorker_ProcessOrders(t *testing.T) {
 			limiter:         limiter,
 			orderRepository: mockRepo,
 		}
-		order := common.Order{OrderNumber: "12345"}
-		mockRepo.On("FindOrdersToProcess", ctx, 0, 10).Return([]common.Order{order}, nil).Once().On("FindOrdersToProcess", ctx, 0, 10).Return([]common.Order{}, nil)
-		mockRepo.On("ChangeOrderStatus", ctx, order, "COMPLETED", 100.0).Return(nil)
+		order := model.Order{OrderNumber: "12345"}
+		mockRepo.On("FindOrdersToProcess", ctx, 0, 10).Return([]model.Order{order}, nil).Once().On("FindOrdersToProcess", ctx, 0, 10).Return([]model.Order{}, nil)
+		mockRepo.On("ChangeOrderStatus", ctx, mock.AnythingOfType("model.Order"), "COMPLETED", 100.0).Return(nil).Run(func(args mock.Arguments) {
+			order := args.Get(1).(model.Order)
+
+			assert.Equal(t, "12345", order.OrderNumber)
+		})
 
 		go worker.ProcessOrders(ctx, server.URL)
 
@@ -96,9 +100,14 @@ func TestWorker_ProcessOrders(t *testing.T) {
 			limiter:         limiter,
 			orderRepository: mockRepo,
 		}
-		order := common.Order{OrderNumber: "12345"}
-		mockRepo.On("FindOrdersToProcess", ctx, 0, 10).Return([]common.Order{order}, nil).Once().On("FindOrdersToProcess", ctx, 0, 10).Return([]common.Order{}, nil)
+		order := model.Order{OrderNumber: "12345"}
+		mockRepo.On("FindOrdersToProcess", ctx, 0, 10).Return([]model.Order{order}, nil).Once().On("FindOrdersToProcess", ctx, 0, 10).Return([]model.Order{}, nil)
 		mockRepo.On("ChangeOrderStatus", ctx, order, "COMPLETED", 100.0).Return(nil)
+		mockRepo.On("ChangeOrderStatus", ctx, mock.AnythingOfType("model.Order"), "COMPLETED", 100.0).Return(nil).Run(func(args mock.Arguments) {
+			order := args.Get(1).(model.Order)
+
+			assert.Equal(t, "12345", order.OrderNumber)
+		})
 
 		go worker.ProcessOrders(ctx, server.URL)
 

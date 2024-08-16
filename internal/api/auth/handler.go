@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/desepticon55/gofemart/internal/common"
+	"github.com/desepticon55/gofemart/internal/model"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
@@ -17,20 +17,19 @@ func LoginHandler(logger *zap.Logger, service userService) http.HandlerFunc {
 			return
 		}
 
-		var user common.User
+		var user model.User
 		err := json.NewDecoder(request.Body).Decode(&user)
 		if err != nil {
 			http.Error(writer, "Invalid request payload", http.StatusBadRequest)
 			return
 		}
 
-		if user.Username == "" || user.Password == "" {
-			http.Error(writer, "Invalid request payload", http.StatusBadRequest)
-			return
-		}
-
-		foundUser, err := service.FindUser(request.Context(), user.Username)
+		foundUser, err := service.FindUser(request.Context(), user)
 		if err != nil {
+			if errors.Is(err, model.ErrUserDataIsNotValid) {
+				http.Error(writer, "Invalid request payload", http.StatusBadRequest)
+				return
+			}
 			http.Error(writer, "Invalid username or password", http.StatusUnauthorized)
 			return
 		}
@@ -41,7 +40,7 @@ func LoginHandler(logger *zap.Logger, service userService) http.HandlerFunc {
 			return
 		}
 
-		token, err := common.CreateJWTToken(user.Username)
+		token, err := createJWTToken(user.Username)
 		if err != nil {
 			logger.Error("Error during create token", zap.String("username", user.Username), zap.Error(err))
 			http.Error(writer, "Could not create token", http.StatusInternalServerError)
@@ -61,7 +60,7 @@ func RegisterHandler(logger *zap.Logger, service userService) http.HandlerFunc {
 			return
 		}
 
-		var user common.User
+		var user model.User
 		err := json.NewDecoder(request.Body).Decode(&user)
 		if err != nil {
 			http.Error(writer, "Invalid request payload", http.StatusInternalServerError)
@@ -70,12 +69,12 @@ func RegisterHandler(logger *zap.Logger, service userService) http.HandlerFunc {
 
 		err = service.CreateUser(request.Context(), user)
 		if err != nil {
-			if errors.Is(err, common.ErrUserDataIsNotValid) {
+			if errors.Is(err, model.ErrUserDataIsNotValid) {
 				http.Error(writer, "Invalid request payload", http.StatusBadRequest)
 				return
 			}
 
-			if errors.Is(err, common.ErrUserAlreadyExists) {
+			if errors.Is(err, model.ErrUserAlreadyExists) {
 				http.Error(writer, fmt.Sprintf("User with login = %s already exist", user.Username), http.StatusConflict)
 				return
 			}
@@ -85,7 +84,7 @@ func RegisterHandler(logger *zap.Logger, service userService) http.HandlerFunc {
 		}
 		logger.Debug("Successfully save user", zap.String("username", user.Username))
 
-		token, err := common.CreateJWTToken(user.Username)
+		token, err := createJWTToken(user.Username)
 		if err != nil {
 			logger.Error("Error during create token", zap.String("username", user.Username), zap.Error(err))
 			http.Error(writer, "Could not create token", http.StatusInternalServerError)
